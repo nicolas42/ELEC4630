@@ -1,0 +1,102 @@
+clear; clc; close all;
+v = VideoReader('Eric2020.mp4');
+
+X=[]; Y=[];
+for index = 1:30:30*39
+
+    I = read(v,index);
+    % Crop Image
+    I = imcrop(I,[1/4*v.Width 10  1/2*v.Width, 3/4*v.Height]);
+    [height, width] = size(I);
+    I = rgb2gray(I);
+    % Get Edges
+    BW = edge(I,'canny',0.1);
+    imshow(BW);
+    
+    
+    % Get Vertical and Horizontal Hough Lines
+    [H,T,R] = hough(BW, 'Theta',[85:89 -90:-85]);
+    P  = houghpeaks(H,5,'threshold',ceil(0.5*max(H(:))));
+    hlines = houghlines(BW,T,R,P, 'FillGap', 0.5*width);
+
+    [H,T,R] = hough(BW, 'Theta',[-5:5]);
+    P  = houghpeaks(H,1,'threshold',ceil(0.5*max(H(:))));
+    vlines = houghlines(BW,T,R,P, 'FillGap', 0.5*width);
+
+    lines = [hlines vlines];
+
+    % Find topmost horizontal line
+    hline = hlines(1);
+    for i=1:length(hlines)
+        a = hlines(i).point1(2) + hlines(i).point2(2);
+        b = hline.point1(2) + hline.point2(2);
+        if a < b
+            hline = hlines(i);
+        end
+    end
+
+    % Find intersection of vertical and topmost horizontal line
+    x1  = [hline.point1(1), hline.point2(1)];
+    y1  = [hline.point1(2), hline.point2(2)];
+    x2  = [vlines(1).point1(1), vlines(1).point2(1)];
+    y2  = [vlines(1).point1(2), vlines(1).point2(2)];
+    p1 = polyfit(x1,y1,1);
+    p2 = polyfit(x2,y2,1);
+
+
+    
+    x1  = [hline.point1(1), hline.point1(1); hline.point1(1), hline.point2(1)];
+    y1  = [hline.point1(2), hline.point2(2)];
+    x2  = [vlines(1).point1(1), vlines(1).point2(1)];
+    y2  = [vlines(1).point1(2), vlines(1).point2(2)];
+
+    
+    L1 = [ 0 0;  5 5]; % [x1 y1; x2 y2];
+    L2 = [1 0;  1 5];
+
+    a1 = L1(1,:)';
+    a2 = L1(2,:)';
+    b1 = L2(1,:)';
+    b2 = L2(2,:)';
+
+    % a1 + (a2-a1)t1 = b1 + (b2-b1)t2
+
+
+    A = [a1-a2, b2-b1];
+    B = a1-b1;
+    % Ax = B
+    t = inv(A) * B;
+
+    x = a1 + (a2-a1)*t(1);
+
+    x_intersect = x(1);
+    y_intersect = x(2);
+
+    
+    
+    
+    X = cat(1,X, x_intersect);
+    Y = cat(1,Y, y_intersect);
+
+
+    % Plot Lines
+    imshow(I), hold on
+    max_len = 0;
+    for k = 1:length(lines)
+       xy = [lines(k).point1; lines(k).point2];
+       plot(xy(:,1),xy(:,2),'LineWidth',2,'Color','green');
+
+    end
+    plot(x_intersect,y_intersect,'r*')
+    
+%     pause
+end
+close;
+
+%%
+figure();
+plot([1:1:length(X)]',X);
+xlabel('Frame Number/10')
+ylabel('X Position of Cropped Image');
+title('Pantograph and Power Line Intersection Point');
+

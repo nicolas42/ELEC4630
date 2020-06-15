@@ -1,0 +1,8 @@
+import os
+
+for dirpath, dnames, fnames in os.walk("./"):
+    for f in fnames:
+        if f.endswith(".x"):
+            x(os.path.join(dirpath, f))
+        elif f.endswith(".xc"):
+            xc(os.path.join(dirpath,f))
